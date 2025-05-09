@@ -1,3 +1,58 @@
+// 显示README帮助信息
+function showReadme() {
+    // 创建一个模态对话框
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+    
+    const closeBtn = document.createElement('span');
+    closeBtn.className = 'close-btn';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.onclick = function() {
+        document.body.removeChild(modal);
+    };
+    
+    const title = document.createElement('h2');
+    title.textContent = 'FFmpeg 安装指南';
+    
+    const content = document.createElement('div');
+    content.innerHTML = `
+        <h3>FFmpeg 安装要求</h3>
+        <p>本应用需要系统中安装FFmpeg才能正常工作。</p>
+        
+        <h4>Windows安装步骤：</h4>
+        <ol>
+            <li>从 <a href="https://ffmpeg.org/download.html" target="_blank">FFmpeg官网</a> 或 
+                <a href="https://www.gyan.dev/ffmpeg/builds/" target="_blank">gyan.dev</a> 下载FFmpeg</li>
+            <li>解压下载的文件到一个目录，例如 <code>C:\ffmpeg</code></li>
+            <li>将FFmpeg的bin目录添加到系统环境变量PATH中：
+                <ul>
+                    <li>右键点击「此电脑」，选择「属性」</li>
+                    <li>点击「高级系统设置」</li>
+                    <li>点击「环境变量」</li>
+                    <li>在「系统变量」中找到「Path」并编辑</li>
+                    <li>添加FFmpeg的bin目录路径（例如：<code>C:\ffmpeg\bin</code>）</li>
+                    <li>点击「确定」保存更改</li>
+                </ul>
+            </li>
+            <li>重启命令提示符或PowerShell</li>
+            <li>验证安装：输入 <code>ffmpeg -version</code> 确认是否正确安装</li>
+        </ol>
+        
+        <h4>安装后：</h4>
+        <p>安装完成后，请重新启动本应用或刷新页面再次尝试。</p>
+    `;
+    
+    modalContent.appendChild(closeBtn);
+    modalContent.appendChild(title);
+    modalContent.appendChild(content);
+    modal.appendChild(modalContent);
+    
+    document.body.appendChild(modal);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // 获取DOM元素
     const uploadArea = document.getElementById('upload-area');
@@ -264,7 +319,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 height: height
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(errData => {
+                    throw new Error(errData.message || '处理视频时出错');
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             progressContainer.style.display = 'none';
             
@@ -279,8 +341,15 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             progressContainer.style.display = 'none';
-            console.error('Error:', error);
-            showStatus(processStatus, '处理失败: ' + error.message, 'error');
+            
+            // 显示错误信息
+            const errorContainer = document.getElementById('error-container');
+            const errorMessage = document.getElementById('error-message');
+            
+            errorMessage.textContent = error.message || '处理视频时出错';
+            errorContainer.classList.remove('hidden');
+            
+            console.error('处理视频时出错:', error);
         });
         
         // 模拟进度条（实际进度无法获取）

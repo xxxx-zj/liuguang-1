@@ -74,25 +74,53 @@ app.post('/process', express.json(), (req, res) => {
   const outputFilename = 'processed_' + filename;
   const outputPath = path.join(processedDir, outputFilename);
   
-  // 使用ffmpeg处理视频
-  ffmpeg(inputPath)
-    .videoFilters([
-      // 使用drawbox滤镜在水印位置绘制一个与背景相似的矩形
-      `drawbox=x=${x}:y=${y}:w=${width}:h=${height}:color=black@0.9:t=fill`
-    ])
-    .output(outputPath)
-    .on('end', () => {
-      res.json({ 
-        success: true, 
-        processedFilename: outputFilename,
-        downloadPath: `/download/${outputFilename}`
-      });
-    })
-    .on('error', (err) => {
-      console.error('Error processing video:', err);
-      res.status(500).json({ error: '处理视频时出错' });
-    })
-    .run();
+  // 检查输入文件是否存在
+  if (!fs.existsSync(inputPath)) {
+    console.error(`输入文件不存在: ${inputPath}`);
+    return res.status(404).json({ error: '视频文件不存在' });
+  }
+  
+  try {
+    // 使用ffmpeg处理视频
+    console.log(`开始处理视频: ${filename}, 水印位置: x=${x}, y=${y}, width=${width}, height=${height}`);
+    
+    ffmpeg(inputPath)
+      .videoFilters([
+        // 使用drawbox滤镜在水印位置绘制一个与背景相似的矩形
+        `drawbox=x=${x}:y=${y}:w=${width}:h=${height}:color=black@0.9:t=fill`
+      ])
+      .output(outputPath)
+      .on('start', (commandLine) => {
+        console.log('FFmpeg 命令:', commandLine);
+      })
+      .on('progress', (progress) => {
+        console.log('处理进度:', progress.percent ? `${Math.round(progress.percent)}%` : '处理中...');
+      })
+      .on('end', () => {
+        console.log(`视频处理完成: ${outputFilename}`);
+        res.json({ 
+          success: true, 
+          processedFilename: outputFilename,
+          downloadPath: `/download/${outputFilename}`
+        });
+      })
+      .on('error', (err) => {
+        console.error('处理视频时出错:', err.message);
+        console.error('错误堆栈:', err.stack);
+        res.status(500).json({ 
+          error: '处理视频时出错', 
+          message: '请确保系统已安装FFmpeg并且可以在命令行中访问。错误详情: ' + err.message 
+        });
+      })
+      .run();
+  } catch (err) {
+    console.error('启动FFmpeg处理时出错:', err.message);
+    console.error('错误堆栈:', err.stack);
+    res.status(500).json({ 
+      error: '启动视频处理时出错', 
+      message: '请确保系统已安装FFmpeg并且可以在命令行中访问。错误详情: ' + err.message 
+    });
+  }
 });
 
 // 处理视频下载
